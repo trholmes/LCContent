@@ -66,6 +66,23 @@ public:
      */
     static pandora::StatusCode RegisterSoftwareCompensationEnergyCorrection(const pandora::Pandora &pandora, const std::string &name,
         const lc_content::LCSoftwareCompensationParameters &parameters);
+
+    /**
+     *  @brief  Register theta-energy binned hadronic correction plugin (note user side configuration)
+     *
+     *  @param  pandora the pandora instance with which to register content
+     *  @param  name the name/label associated with the energy correction plugin
+     *  @param  ecalThetaBinEdges ECAL theta bin edges
+     *  @param  ecalEnergyBinEdges ECAL energy bin edges
+     *  @param  ecalScaleFactors ECAL flattened scale factors (row-major theta x energy)
+     *  @param  hcalThetaBinEdges HCAL theta bin edges
+     *  @param  hcalEnergyBinEdges HCAL energy bin edges
+     *  @param  hcalScaleFactors HCAL flattened scale factors (row-major theta x energy)
+     */
+    static pandora::StatusCode RegisterThetaEnergyBinnedEnergyCorrection(const pandora::Pandora &pandora, const std::string &name,
+        const pandora::FloatVector &ecalThetaBinEdges, const pandora::FloatVector &ecalEnergyBinEdges,
+        const pandora::FloatVector &ecalScaleFactors, const pandora::FloatVector &hcalThetaBinEdges,
+        const pandora::FloatVector &hcalEnergyBinEdges, const pandora::FloatVector &hcalScaleFactors);
 };
 
 #endif // #ifndef LINEAR_COLLIDER_CONTENT_H

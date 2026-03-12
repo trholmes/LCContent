@@ -248,3 +248,16 @@ pandora::StatusCode LCContent::RegisterSoftwareCompensationEnergyCorrection(cons
     return PandoraApi::RegisterEnergyCorrectionPlugin(pandora, name, pandora::HADRONIC,
         new lc_content::LCSoftwareCompensation(parameters));
 }
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+pandora::StatusCode LCContent::RegisterThetaEnergyBinnedEnergyCorrection(const pandora::Pandora &pandora, const std::string &name,
+    const pandora::FloatVector &ecalThetaBinEdges, const pandora::FloatVector &ecalEnergyBinEdges,
+    const pandora::FloatVector &ecalScaleFactors, const pandora::FloatVector &hcalThetaBinEdges,
+    const pandora::FloatVector &hcalEnergyBinEdges, const pandora::FloatVector &hcalScaleFactors)
+{
+    return PandoraApi::RegisterEnergyCorrectionPlugin(pandora, name, pandora::HADRONIC,
+        new lc_content::LCEnergyCorrectionPlugins::ThetaEnergyBinned(
+            ecalThetaBinEdges, ecalEnergyBinEdges, ecalScaleFactors,
+            hcalThetaBinEdges, hcalEnergyBinEdges, hcalScaleFactors));
+}

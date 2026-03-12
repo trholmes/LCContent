@@ -119,6 +119,46 @@ public:
         unsigned int    m_minMuonHitsInInnerLayer;          ///< Min muon hits in muon inner layer to correct charged cluster energy
         float           m_coilEnergyCorrectionChi;          ///< Track-cluster chi value used to assess need for coil energy correction
     };
+
+    /**
+     *   @brief  ThetaEnergyBinned class. Applies domain-specific (ECAL/HCAL) theta-energy binned hadronic corrections.
+     */
+    class ThetaEnergyBinned : public pandora::EnergyCorrectionPlugin
+    {
+    public:
+        /**
+         *  @brief  Constructor
+         *
+         *  @param  ecalThetaBinEdges ECAL theta bin edges
+         *  @param  ecalEnergyBinEdges ECAL energy bin edges
+         *  @param  ecalScaleFactors ECAL flattened scale factors (row-major theta x energy)
+         *  @param  hcalThetaBinEdges HCAL theta bin edges
+         *  @param  hcalEnergyBinEdges HCAL energy bin edges
+         *  @param  hcalScaleFactors HCAL flattened scale factors (row-major theta x energy)
+         */
+        ThetaEnergyBinned(const pandora::FloatVector &ecalThetaBinEdges, const pandora::FloatVector &ecalEnergyBinEdges,
+            const pandora::FloatVector &ecalScaleFactors, const pandora::FloatVector &hcalThetaBinEdges,
+            const pandora::FloatVector &hcalEnergyBinEdges, const pandora::FloatVector &hcalScaleFactors);
+
+        pandora::StatusCode MakeEnergyCorrections(const pandora::Cluster *const pCluster, float &correctedEnergy) const;
+
+    private:
+        pandora::StatusCode ReadSettings(const pandora::TiXmlHandle xmlHandle);
+
+        struct DomainTable
+        {
+            pandora::FloatVector m_thetaBinEdges;
+            pandora::FloatVector m_energyBinEdges;
+            pandora::FloatVector m_scaleFactors;
+        };
+
+        static unsigned int FindBin(const pandora::FloatVector &edges, const float value);
+        static float LookupScale(const DomainTable &table, const float theta, const float energy);
+        static void ValidateTable(const DomainTable &table);
+
+        DomainTable m_ecalTable;
+        DomainTable m_hcalTable;
+    };
 };
 
 } // namespace lc_content

@@ -12,6 +12,9 @@
 
 #include "LCPlugins/LCEnergyCorrectionPlugins.h"
 
+#include <algorithm>
+#include <cmath>
+
 using namespace pandora;
 
 namespace lc_content
@@ -387,6 +390,143 @@ StatusCode LCEnergyCorrectionPlugins::MuonCoilCorrection::ReadSettings(const TiX
         "CoilEnergyCorrectionChi", m_coilEnergyCorrectionChi));
 
     return STATUS_CODE_SUCCESS;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+LCEnergyCorrectionPlugins::ThetaEnergyBinned::ThetaEnergyBinned(
+    const FloatVector &ecalThetaBinEdges,
+    const FloatVector &ecalEnergyBinEdges,
+    const FloatVector &ecalScaleFactors,
+    const FloatVector &hcalThetaBinEdges,
+    const FloatVector &hcalEnergyBinEdges,
+    const FloatVector &hcalScaleFactors)
+{
+    m_ecalTable.m_thetaBinEdges = ecalThetaBinEdges;
+    m_ecalTable.m_energyBinEdges = ecalEnergyBinEdges;
+    m_ecalTable.m_scaleFactors = ecalScaleFactors;
+
+    m_hcalTable.m_thetaBinEdges = hcalThetaBinEdges;
+    m_hcalTable.m_energyBinEdges = hcalEnergyBinEdges;
+    m_hcalTable.m_scaleFactors = hcalScaleFactors;
+
+    ValidateTable(m_ecalTable);
+    ValidateTable(m_hcalTable);
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+StatusCode LCEnergyCorrectionPlugins::ThetaEnergyBinned::MakeEnergyCorrections(const Cluster *const pCluster, float &correctedHadronicEnergy) const
+{
+    if (correctedHadronicEnergy <= std::numeric_limits<float>::epsilon())
+        return STATUS_CODE_SUCCESS;
+
+    const OrderedCaloHitList &orderedCaloHitList(pCluster->GetOrderedCaloHitList());
+    CaloHitList caloHitList;
+    orderedCaloHitList.FillCaloHitList(caloHitList);
+
+    if (caloHitList.empty())
+        return STATUS_CODE_SUCCESS;
+
+    float ecalEnergy(0.f), hcalEnergy(0.f), totalWeight(0.f);
+    CartesianVector weightedPosition(0.f, 0.f, 0.f);
+
+    for (CaloHitList::const_iterator iter = caloHitList.begin(), iterEnd = caloHitList.end(); iter != iterEnd; ++iter)
+    {
+        const CaloHit *const pCaloHit(*iter);
+        const float hitHadronicEnergy(std::max(0.f, pCaloHit->GetHadronicEnergy()));
+
+        if (ECAL == pCaloHit->GetHitType())
+            ecalEnergy += hitHadronicEnergy;
+        else if (HCAL == pCaloHit->GetHitType())
+            hcalEnergy += hitHadronicEnergy;
+
+        weightedPosition += pCaloHit->GetPositionVector() * hitHadronicEnergy;
+        totalWeight += hitHadronicEnergy;
+    }
+
+    if (totalWeight <= std::numeric_limits<float>::epsilon())
+        return STATUS_CODE_SUCCESS;
+
+    const CartesianVector clusterPosition(weightedPosition * (1.f / totalWeight));
+    const float radius(clusterPosition.GetMagnitude());
+
+    if (radius <= std::numeric_limits<float>::epsilon())
+        return STATUS_CODE_SUCCESS;
+
+    const float cosTheta(std::max(-1.f, std::min(1.f, clusterPosition.GetZ() / radius)));
+    const float theta(std::acos(cosTheta));
+
+    const DomainTable &selectedTable = (ecalEnergy >= hcalEnergy) ? m_ecalTable : m_hcalTable;
+    const float scale(LookupScale(selectedTable, theta, correctedHadronicEnergy));
+
+    correctedHadronicEnergy *= scale;
+
+    return STATUS_CODE_SUCCESS;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+StatusCode LCEnergyCorrectionPlugins::ThetaEnergyBinned::ReadSettings(const TiXmlHandle /*xmlHandle*/)
+{
+    return STATUS_CODE_SUCCESS;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+unsigned int LCEnergyCorrectionPlugins::ThetaEnergyBinned::FindBin(const FloatVector &edges, const float value)
+{
+    if (value < edges.front())
+        return 0;
+
+    if (value >= edges.back())
+        return static_cast<unsigned int>(edges.size() - 2);
+
+    const FloatVector::const_iterator upper(std::upper_bound(edges.begin(), edges.end(), value));
+    return static_cast<unsigned int>(std::distance(edges.begin(), upper) - 1);
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+float LCEnergyCorrectionPlugins::ThetaEnergyBinned::LookupScale(const DomainTable &table, const float theta, const float energy)
+{
+    const unsigned int nEnergyBins(static_cast<unsigned int>(table.m_energyBinEdges.size() - 1));
+    const unsigned int iTheta(FindBin(table.m_thetaBinEdges, theta));
+    const unsigned int iEnergy(FindBin(table.m_energyBinEdges, energy));
+    const unsigned int index(iTheta * nEnergyBins + iEnergy);
+
+    return table.m_scaleFactors.at(index);
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+void LCEnergyCorrectionPlugins::ThetaEnergyBinned::ValidateTable(const DomainTable &table)
+{
+    if ((table.m_thetaBinEdges.size() < 2) || (table.m_energyBinEdges.size() < 2))
+        throw StatusCodeException(STATUS_CODE_INVALID_PARAMETER);
+
+    if (!std::is_sorted(table.m_thetaBinEdges.begin(), table.m_thetaBinEdges.end()) ||
+        !std::is_sorted(table.m_energyBinEdges.begin(), table.m_energyBinEdges.end()))
+    {
+        throw StatusCodeException(STATUS_CODE_INVALID_PARAMETER);
+    }
+
+    for (std::size_t i = 1; i < table.m_thetaBinEdges.size(); ++i)
+    {
+        if (!(table.m_thetaBinEdges.at(i) > table.m_thetaBinEdges.at(i - 1)))
+            throw StatusCodeException(STATUS_CODE_INVALID_PARAMETER);
+    }
+
+    for (std::size_t i = 1; i < table.m_energyBinEdges.size(); ++i)
+    {
+        if (!(table.m_energyBinEdges.at(i) > table.m_energyBinEdges.at(i - 1)))
+            throw StatusCodeException(STATUS_CODE_INVALID_PARAMETER);
+    }
+
+    const std::size_t expectedSize((table.m_thetaBinEdges.size() - 1) * (table.m_energyBinEdges.size() - 1));
+    if (table.m_scaleFactors.size() != expectedSize)
+        throw StatusCodeException(STATUS_CODE_INVALID_PARAMETER);
 }
 
 } // namespace lc_content
