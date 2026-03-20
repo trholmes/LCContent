@@ -425,6 +425,7 @@ StatusCode LCEnergyCorrectionPlugins::ThetaEnergyBinned::MakeEnergyCorrections(c
     const OrderedCaloHitList &orderedCaloHitList(pCluster->GetOrderedCaloHitList());
     CaloHitList caloHitList;
     orderedCaloHitList.FillCaloHitList(caloHitList);
+    caloHitList.insert(caloHitList.end(), pCluster->GetIsolatedCaloHitList().begin(), pCluster->GetIsolatedCaloHitList().end());
 
     if (caloHitList.empty())
         return STATUS_CODE_SUCCESS;
@@ -457,11 +458,15 @@ StatusCode LCEnergyCorrectionPlugins::ThetaEnergyBinned::MakeEnergyCorrections(c
 
     const float cosTheta(std::max(-1.f, std::min(1.f, clusterPosition.GetZ() / radius)));
     const float theta(std::acos(cosTheta));
+    float correctedEcalEnergy(0.f), correctedHcalEnergy(0.f);
 
-    const DomainTable &selectedTable = (ecalEnergy >= hcalEnergy) ? m_ecalTable : m_hcalTable;
-    const float scale(LookupScale(selectedTable, theta, correctedHadronicEnergy));
+    if (ecalEnergy > std::numeric_limits<float>::epsilon())
+        correctedEcalEnergy = ecalEnergy * LookupScale(m_ecalTable, theta, ecalEnergy);
 
-    correctedHadronicEnergy *= scale;
+    if (hcalEnergy > std::numeric_limits<float>::epsilon())
+        correctedHcalEnergy = hcalEnergy * LookupScale(m_hcalTable, theta, hcalEnergy);
+
+    correctedHadronicEnergy = correctedEcalEnergy + correctedHcalEnergy;
 
     return STATUS_CODE_SUCCESS;
 }
