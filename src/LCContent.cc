@@ -252,11 +252,12 @@ pandora::StatusCode LCContent::RegisterSoftwareCompensationEnergyCorrection(cons
 //------------------------------------------------------------------------------------------------------------------------------------------
 
 pandora::StatusCode LCContent::RegisterThetaEnergyBinnedEnergyCorrection(const pandora::Pandora &pandora, const std::string &name,
-    const pandora::FloatVector &ecalThetaBinEdges, const pandora::FloatVector &ecalEnergyBinEdges,
+    const pandora::EnergyCorrectionType energyCorrectionType, const pandora::FloatVector &ecalThetaBinEdges,
+    const pandora::FloatVector &ecalEnergyBinEdges,
     const pandora::FloatVector &ecalScaleFactors, const pandora::FloatVector &hcalThetaBinEdges,
     const pandora::FloatVector &hcalEnergyBinEdges, const pandora::FloatVector &hcalScaleFactors)
 {
-    return PandoraApi::RegisterEnergyCorrectionPlugin(pandora, name, pandora::HADRONIC,
+    return PandoraApi::RegisterEnergyCorrectionPlugin(pandora, name, energyCorrectionType,
         new lc_content::LCEnergyCorrectionPlugins::ThetaEnergyBinned(
             ecalThetaBinEdges, ecalEnergyBinEdges, ecalScaleFactors,
             hcalThetaBinEdges, hcalEnergyBinEdges, hcalScaleFactors));

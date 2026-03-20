@@ -244,7 +244,9 @@ StatusCode PfoCreationAlgorithm::CreateNeutralPfos() const
             continue;
 
         const bool isPhoton(pCluster->PassPhotonId(this->GetPandora()));
-        const float clusterEnergy(pCluster->GetCorrectedHadronicEnergy(this->GetPandora()));
+        const float clusterEnergy(isPhoton ?
+            pCluster->GetCorrectedElectromagneticEnergy(this->GetPandora()) :
+            pCluster->GetCorrectedHadronicEnergy(this->GetPandora()));
 
         // Veto non-photon clusters below hadronic energy threshold and those occupying a single layer
         if (!isPhoton)
