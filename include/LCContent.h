@@ -66,6 +66,15 @@ public:
      */
     static pandora::StatusCode RegisterSoftwareCompensationEnergyCorrection(const pandora::Pandora &pandora, const std::string &name,
         const lc_content::LCSoftwareCompensationParameters &parameters);
+
+    /**
+     *  @brief  Register theta-energy binned residual correction plugin
+     */
+    static pandora::StatusCode RegisterThetaEnergyBinnedEnergyCorrection(const pandora::Pandora &pandora, const std::string &name,
+        const pandora::EnergyCorrectionType energyCorrectionType, const pandora::FloatVector &ecalThetaBinEdges,
+        const pandora::FloatVector &ecalEnergyBinEdges, const pandora::FloatVector &ecalScaleFactors,
+        const pandora::FloatVector &hcalThetaBinEdges, const pandora::FloatVector &hcalEnergyBinEdges,
+        const pandora::FloatVector &hcalScaleFactors);
 };
 
 #endif // #ifndef LINEAR_COLLIDER_CONTENT_H
