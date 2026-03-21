@@ -14,11 +14,25 @@
 
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
 
 using namespace pandora;
 
 namespace lc_content
 {
+
+namespace
+{
+using ClusterEnergyMap = std::unordered_map<const Cluster *, float>;
+
+ClusterEnergyMap &GetSnapshotMap(const pandora::EnergyCorrectionType energyCorrectionType)
+{
+    static ClusterEnergyMap s_hadronicSnapshots;
+    static ClusterEnergyMap s_electromagneticSnapshots;
+
+    return (pandora::ELECTROMAGNETIC == energyCorrectionType) ? s_electromagneticSnapshots : s_hadronicSnapshots;
+}
+} // namespace
 
 LCEnergyCorrectionPlugins::NonLinearityCorrection::NonLinearityCorrection(const FloatVector &inputEnergyCorrectionPoints,
         const FloatVector &outputEnergyCorrectionPoints) :
@@ -401,7 +415,9 @@ LCEnergyCorrectionPlugins::ThetaEnergyBinned::ThetaEnergyBinned(
     const FloatVector &ecalScaleFactors,
     const FloatVector &hcalThetaBinEdges,
     const FloatVector &hcalEnergyBinEdges,
-    const FloatVector &hcalScaleFactors)
+    const FloatVector &hcalScaleFactors,
+    const pandora::EnergyCorrectionType energyCorrectionType) :
+    m_energyCorrectionType(energyCorrectionType)
 {
     m_ecalTable.m_thetaBinEdges = ecalThetaBinEdges;
     m_ecalTable.m_energyBinEdges = ecalEnergyBinEdges;
@@ -421,6 +437,10 @@ StatusCode LCEnergyCorrectionPlugins::ThetaEnergyBinned::MakeEnergyCorrections(c
 {
     if (correctedHadronicEnergy <= std::numeric_limits<float>::epsilon())
         return STATUS_CODE_SUCCESS;
+
+    ClusterEnergyMap &snapshotMap(GetSnapshotMap(m_energyCorrectionType));
+    if (snapshotMap.end() == snapshotMap.find(pCluster))
+        snapshotMap[pCluster] = correctedHadronicEnergy;
 
     const OrderedCaloHitList &orderedCaloHitList(pCluster->GetOrderedCaloHitList());
     CaloHitList caloHitList;
@@ -469,6 +489,29 @@ StatusCode LCEnergyCorrectionPlugins::ThetaEnergyBinned::MakeEnergyCorrections(c
     correctedHadronicEnergy = correctedEcalEnergy + correctedHcalEnergy;
 
     return STATUS_CODE_SUCCESS;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+void LCEnergyCorrectionPlugins::ThetaEnergyBinned::ResetLegacyEnergySnapshots()
+{
+    GetSnapshotMap(pandora::HADRONIC).clear();
+    GetSnapshotMap(pandora::ELECTROMAGNETIC).clear();
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+bool LCEnergyCorrectionPlugins::ThetaEnergyBinned::GetLegacyEnergySnapshot(const Cluster *const pCluster,
+    const pandora::EnergyCorrectionType energyCorrectionType, float &energy)
+{
+    const ClusterEnergyMap &snapshotMap(GetSnapshotMap(energyCorrectionType));
+    const ClusterEnergyMap::const_iterator iter(snapshotMap.find(pCluster));
+
+    if (snapshotMap.end() == iter)
+        return false;
+
+    energy = iter->second;
+    return true;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------

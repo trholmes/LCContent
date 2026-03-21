@@ -138,9 +138,14 @@ public:
          */
         ThetaEnergyBinned(const pandora::FloatVector &ecalThetaBinEdges, const pandora::FloatVector &ecalEnergyBinEdges,
             const pandora::FloatVector &ecalScaleFactors, const pandora::FloatVector &hcalThetaBinEdges,
-            const pandora::FloatVector &hcalEnergyBinEdges, const pandora::FloatVector &hcalScaleFactors);
+            const pandora::FloatVector &hcalEnergyBinEdges, const pandora::FloatVector &hcalScaleFactors,
+            const pandora::EnergyCorrectionType energyCorrectionType);
 
         pandora::StatusCode MakeEnergyCorrections(const pandora::Cluster *const pCluster, float &correctedEnergy) const;
+
+        static void ResetLegacyEnergySnapshots();
+        static bool GetLegacyEnergySnapshot(const pandora::Cluster *const pCluster,
+            const pandora::EnergyCorrectionType energyCorrectionType, float &energy);
 
     private:
         pandora::StatusCode ReadSettings(const pandora::TiXmlHandle xmlHandle);
@@ -158,6 +163,7 @@ public:
 
         DomainTable m_ecalTable;
         DomainTable m_hcalTable;
+        pandora::EnergyCorrectionType m_energyCorrectionType;
     };
 };
 

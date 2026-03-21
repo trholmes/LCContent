@@ -260,5 +260,5 @@ pandora::StatusCode LCContent::RegisterThetaEnergyBinnedEnergyCorrection(const p
     return PandoraApi::RegisterEnergyCorrectionPlugin(pandora, name, energyCorrectionType,
         new lc_content::LCEnergyCorrectionPlugins::ThetaEnergyBinned(
             ecalThetaBinEdges, ecalEnergyBinEdges, ecalScaleFactors,
-            hcalThetaBinEdges, hcalEnergyBinEdges, hcalScaleFactors));
+            hcalThetaBinEdges, hcalEnergyBinEdges, hcalScaleFactors, energyCorrectionType));
 }
